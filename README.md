@@ -315,7 +315,9 @@ def deployApp() {
 return this
 ```
 
-Create a new branch "multibranch-pipeline" to test the pipeline execution. 
+Create a new branch "multibranch-pipeline" to test the pipeline execution. notice below the "build image" and "deploy" stages skipped due to when condition
+
+![Multibranch Pipeline](./images/multibranch_pipeline.png)
 
 
 #### 
