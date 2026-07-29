@@ -20,15 +20,42 @@ pipeline {
             steps {
                 script {
                     gv.buildJar()
+                }
+            }
+        }
 
+        stage("test") {
+            steps {
+                script {
+                    gv.testApp()
                 }
             }
         }
 
         stage("build image") {
+            when {
+                expression { 
+                    BRANCH_NAME == 'main'
+                }
+            }
+
             steps {
                 script {
                     gv.buildImage()
+                }
+            }
+        }         
+
+        stage("deploy") {
+            when {
+                expression { 
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    gv.deployApp()
                 }
             }
         }         
