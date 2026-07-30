@@ -328,7 +328,7 @@ Create a new branch "multibranch-pipeline" to test the pipeline execution. notic
 
 Create a Jenkins Shared Library to extract common build logic. 
 
-The shared library is created in a [Jenkins Shared repository](https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git). The repository contains instruction on how to create the library & configure it in Jenkins so that it's available to be referenced in the pipelines. The library provides two functions "buildJar" & "buildImage" to replace the logic in the "script.groovy" file.
+The shared library is created in a [Jenkins Shared repository](https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git). The repository contains instruction on how to create the library & configure it in Jenkins so that it's available to be referenced in the pipelines. The library provides four functions "buildJar", "buildImage", "dockerLogin" & "dockerPush" to replace the logic in the "script.groovy" file.
 
 Let's modify the Jenkinsfile to reference the shared library as below:
 
@@ -379,28 +379,31 @@ pipeline {
             steps {
                 script {
                     // gv.buildImage()
-                    buildImage()
+                    buildImage 'mustafa199b/demo:jma-3.0'
+                    dockerLogin()
+                    dockerPush 'mustafa199b/demo:jma-3.0'
                 }
             }
         }         
 
-    //     stage("deploy") {
-    //         when {
-    //             expression { 
-    //                 BRANCH_NAME == 'main'
-    //             }
-    //         }
+        stage("deploy") {
+            when {
+                expression { 
+                    BRANCH_NAME == 'main'
+                }
+            }
 
-    //         steps {
-    //             script {
-    //                 gv.deployApp()
-    //             }
-    //         }
-    //     }         
+            steps {
+                script {
+                    gv.deployApp()
+                }
+            }
+        }         
     }
 }
 ```
 
+Now run the pipeline and observe that the build was successful for the Jar and the docker image is successfully pushed to the docker registry.
 
 
 #### 

@@ -44,23 +44,25 @@ pipeline {
             steps {
                 script {
                     // gv.buildImage()
-                    buildImage()
+                    buildImage 'mustafa199b/demo:jma-3.0'
+                    dockerLogin()
+                    dockerPush 'mustafa199b/demo:jma-3.0'
                 }
             }
         }         
 
-    //     stage("deploy") {
-    //         when {
-    //             expression { 
-    //                 BRANCH_NAME == 'main'
-    //             }
-    //         }
+        stage("deploy") {
+            when {
+                expression { 
+                    BRANCH_NAME == 'main'
+                }
+            }
 
-    //         steps {
-    //             script {
-    //                 gv.deployApp()
-    //             }
-    //         }
-    //     }         
+            steps {
+                script {
+                    gv.deployApp()
+                }
+            }
+        }         
     }
 }
