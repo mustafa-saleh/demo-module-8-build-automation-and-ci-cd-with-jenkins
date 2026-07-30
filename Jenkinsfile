@@ -1,3 +1,4 @@
+@Library('my-shared-library')       // _ is not required since the "@Library" declaration is followed by "gv" definition before the pipeline
 def gv
 
 pipeline {   
@@ -19,18 +20,19 @@ pipeline {
         stage("build jar") {
             steps {
                 script {
-                    gv.buildJar()
+                    // gv.buildJar()
+                    buildJar()
                 }
             }
         }
 
-        stage("test") {
-            steps {
-                script {
-                    gv.testApp()
-                }
-            }
-        }
+        // stage("test") {
+        //     steps {
+        //         script {
+        //             gv.testApp()
+        //         }
+        //     }
+        // }
 
         stage("build image") {
             when {
@@ -41,23 +43,24 @@ pipeline {
 
             steps {
                 script {
-                    gv.buildImage()
+                    // gv.buildImage()
+                    buildImage()
                 }
             }
         }         
 
-        stage("deploy") {
-            when {
-                expression { 
-                    BRANCH_NAME == 'main'
-                }
-            }
+    //     stage("deploy") {
+    //         when {
+    //             expression { 
+    //                 BRANCH_NAME == 'main'
+    //             }
+    //         }
 
-            steps {
-                script {
-                    gv.deployApp()
-                }
-            }
-        }         
+    //         steps {
+    //             script {
+    //                 gv.deployApp()
+    //             }
+    //         }
+    //     }         
     }
-} 
+}

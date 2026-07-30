@@ -2,7 +2,7 @@
 
 This project is for the DevOps Bootcamp demo for:
 
-Containers with Docker - [DevOps Bootcamp](https://techworld-with-nana.teachable.com/p/devops-bootcamp)
+Build Automation & CI/CD with Jenkins - [DevOps Bootcamp](https://techworld-with-nana.teachable.com/p/devops-bootcamp)
 
 ## Demo Project
 
@@ -29,6 +29,9 @@ Jenkins, Groovy, Docker, GitLab, Git, DigitalOcean, Linux, Java, Maven
   - Build Jar
   - Build Docker Imaged. 
   - Push to private DockerHub repository
+- Create separate Git repository for Jenkins Shared Library project
+- Create functions in the JSL to use in the Jenkins pipeline
+- Integrate and use the JSL in Jenkins Pipeline (globally and for a specific project in Jenkinsfile)
 
 ### Implementation
 
@@ -307,6 +310,7 @@ def buildImage() {
         sh 'echo $PASS | docker login -u $USER --password-stdin'
         sh 'docker push mustafa199b/demo:jma-2.0'
     }
+}
 
 def deployApp() {
     echo "deploying the application..."
@@ -320,7 +324,83 @@ Create a new branch "multibranch-pipeline" to test the pipeline execution. notic
 ![Multibranch Pipeline](./images/multibranch_pipeline.png)
 
 
-#### 
+#### Create a Jenkins Shared Library
+
+Create a Jenkins Shared Library to extract common build logic. 
+
+The shared library is created in a [Jenkins Shared repository](https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git). The repository contains instruction on how to create the library & configure it in Jenkins so that it's available to be referenced in the pipelines. The library provides two functions "buildJar" & "buildImage" to replace the logic in the "script.groovy" file.
+
+Let's modify the Jenkinsfile to reference the shared library as below:
+
+```groovy
+@Library('my-shared-library')       // _ is not required since the "@Library" declaration is followed by "gv" definition before the pipeline
+def gv
+
+pipeline {   
+    agent any
+
+    tools {
+        maven 'maven-3.9.16'
+    }
+
+    stages {
+        stage("init") {
+            steps {
+                script {
+                    gv = load "script.groovy"
+                }
+            }
+        }
+
+        stage("build jar") {
+            steps {
+                script {
+                    // gv.buildJar()
+                    buildJar()
+                }
+            }
+        }
+
+        // stage("test") {
+        //     steps {
+        //         script {
+        //             gv.testApp()
+        //         }
+        //     }
+        // }
+
+        stage("build image") {
+            when {
+                expression { 
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    // gv.buildImage()
+                    buildImage()
+                }
+            }
+        }         
+
+    //     stage("deploy") {
+    //         when {
+    //             expression { 
+    //                 BRANCH_NAME == 'main'
+    //             }
+    //         }
+
+    //         steps {
+    //             script {
+    //                 gv.deployApp()
+    //             }
+    //         }
+    //     }         
+    }
+}
+```
+
 
 
 #### 
