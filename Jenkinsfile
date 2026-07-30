@@ -1,7 +1,13 @@
-@Library('my-shared-library')       // _ is not required since the "@Library" declaration is followed by "gv" definition before the pipeline
+// @Library('my-shared-library')       // _ is not required since the "@Library" declaration is followed by "gv" definition before the pipeline
+library identifier: 'my-shared-library@main', retriever: modernSCM([
+    $class: 'GitSCMSource',
+    remote: 'https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git',
+    credentialsId: 'github-repo'
+])
+
 def gv
 
-pipeline {   
+pipeline {
     agent any
 
     tools {
@@ -9,15 +15,15 @@ pipeline {
     }
 
     stages {
-        stage("init") {
+        stage('init') {
             steps {
                 script {
-                    gv = load "script.groovy"
+                    gv = load 'script.groovy'
                 }
             }
         }
 
-        stage("build jar") {
+        stage('build jar') {
             steps {
                 script {
                     // gv.buildJar()
@@ -34,9 +40,9 @@ pipeline {
         //     }
         // }
 
-        stage("build image") {
+        stage('build image') {
             when {
-                expression { 
+                expression {
                     BRANCH_NAME == 'main'
                 }
             }
@@ -49,11 +55,11 @@ pipeline {
                     dockerPush 'mustafa199b/demo:jma-3.0'
                 }
             }
-        }         
+        }
 
-        stage("deploy") {
+        stage('deploy') {
             when {
-                expression { 
+                expression {
                     BRANCH_NAME == 'main'
                 }
             }
@@ -63,6 +69,6 @@ pipeline {
                     gv.deployApp()
                 }
             }
-        }         
+        }
     }
 }
