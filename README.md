@@ -32,6 +32,9 @@ Jenkins, Groovy, Docker, GitLab, Git, DigitalOcean, Linux, Java, Maven
 - Create separate Git repository for Jenkins Shared Library project
 - Create functions in the JSL to use in the Jenkins pipeline
 - Integrate and use the JSL in Jenkins Pipeline (globally and for a specific project in Jenkinsfile)
+- Install GitHub Plugin in Jenkins
+- Configure GitHub access token and connection to Jenkins in GitHub project settings
+- Configure Jenkins to trigger the CI pipeline, whenever a change is pushed to GitHub
 
 ### Implementation
 
@@ -483,9 +486,51 @@ pipeline {
 }
 ```
 
+#### Configure Webhook to Trigger CI Pipeline Automatically on Every Change
 
-#### 
+To allow GitHub to trigger Jenkins builds automatically upon events like a code push or a pull request, first install the GitHub plugin (if not already installed). you need to set up a GitHub Webhook that communicates with the Jenkins GitHub Plugin. 
 
+##### Configure Your Jenkins Job
+
+Configure the pipeline and go to the build triggers section and enable "Triggers" -> "GitHub hook trigger for GITScm polling". 
+
+Scroll down to the Pipeline (or Source Code Management) section. Ensure your Repository URL is set to your GitHub repo and uses the correct credentials.
+
+##### Set Up the Webhook in GitHub
+
+Next, configure GitHub to send an event payload to Jenkins whenever code is pushed.
+
+In repository settings, configure the webhook with the following details:
+
+Payload URL: Enter your Jenkins URL followed by `/github-webhook/` (https://your-jenkins-domain.com/github-webhook/) 
+
+Crucial: The trailing slash / at the very end is mandatory. Without it, the trigger will fail.
+
+set "Content type: application/json". For "Secret", Leave this blank (unless you have explicitly configured a shared webhook secret in Jenkins global settings). To ensure the build trigger requests are authenticated, let's add a secret (ex: MySuperSecretWebhookKey123) which we also need to configure in Jenkins.
+
+##### Configure a Shared Secret in Jenkins
+
+The native GitHub Plugin for Jenkins natively supports verifying GitHub's cryptographic signatures. This uses an HMAC SHA-256 hash so that your password/token is never sent over the wire.
+
+- Go to Manage Jenkins > System.
+- Scroll down to the GitHub section.
+- Find your GitHub Server entry (or add one if missing, generate github personal access token & add new credentials of type secret-text).
+- Click the "Advanced" button directly under the GitHub Server configurations.
+- Under "Shared secrets", add a new one. Create a credential of type "secret text" and use the same secret configured earlier in Github to verify the webhook requests signature (ex: MySuperSecretWebhookKey123).
+
+GitHub will now sign every payload using that secret key and attach it to an `X-Hub-Signature-256` HTTP header. Jenkins will drop any incoming webhook requests that fail to validate against this signature.
+
+To test the integration, push some changes to the repository & observer that a new build was triggered in Jenkins & in github webhook recent deliveries, you'll see the trigger to build the pipeline.
+
+![Github build Trigger](./images/github_build_trigger.png)
+
+##### Trigger Multibranch Pipeline
+
+To trigger multibranch pipeline, install the plugin "Multibranch Scan Webhook Trigger" and under pipeline configuration enable the "Scan Multibranch Pipeline Triggers" -> "Scan by webhook". Set "trigger token" (ex: githubtoken). The plugin expects a webhook to be delivered to the endpoint `JENKINS_URL/multibranch-webhook-trigger/invoke?token=[Trigger token]`.
+
+In github, add a new webhook to the endpoint `JENKINS_URL/multibranch-webhook-trigger/invoke?token=[Trigger token]` and save.
+
+Now push some changes to the repository to test the integration for multibranch pipeline.
 
 #### 
 
