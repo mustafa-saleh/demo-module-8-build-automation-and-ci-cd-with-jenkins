@@ -19,7 +19,7 @@ def buildImage() {
 
 def deployApp() {
     echo "deploying the application..."
-    echo "deploying the application... test"
+    echo "deploying the application... test2"
 }
 
 return this
