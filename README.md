@@ -502,7 +502,7 @@ Next, configure GitHub to send an event payload to Jenkins whenever code is push
 
 In repository settings, configure the webhook with the following details:
 
-Payload URL: Enter your Jenkins URL followed by `/github-webhook/` (https://your-jenkins-domain.com/github-webhook/) 
+Payload URL: Enter your Jenkins URL followed by `/github-webhook/` for example `https://your-jenkins-domain.com/github-webhook/` 
 
 Crucial: The trailing slash / at the very end is mandatory. Without it, the trigger will fail.
 
