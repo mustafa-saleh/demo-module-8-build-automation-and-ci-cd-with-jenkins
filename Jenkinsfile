@@ -22,6 +22,21 @@ pipeline {
                 }
             }
         }
+        
+        stage('increment version') {
+            steps {
+                script {
+                    echo "incrementing the version..."
+                    sh 'mvn build-helper:parse-version versions:set \
+                    -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.minorVersion}.\\\${parsedVersion.nextIncrementalVersion} \ 
+                    versions:commit'
+                    def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                    def version = matcher[0][1]
+                    echo "new version is: ${version}"
+                    env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                }
+            }
+        }
 
         stage('build jar') {
             steps {
@@ -50,9 +65,9 @@ pipeline {
             steps {
                 script {
                     // gv.buildImage()
-                    buildImage 'mustafa199b/demo:jma-3.0'
+                    buildImage "mustafa199b/demo:jma-${IMAGE_NAME}"
                     dockerLogin()
-                    dockerPush 'mustafa199b/demo:jma-3.0'
+                    dockerPush "mustafa199b/demo:jma-${IMAGE_NAME}"
                 }
             }
         }
