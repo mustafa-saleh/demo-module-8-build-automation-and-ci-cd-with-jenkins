@@ -90,14 +90,10 @@ pipeline {
             steps {
                 script {
                     echo "incrementing the version..."
-                    withCredentials([usernamePassword(credentialsId: 'github-repo', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    withCredentials([secretText(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                         sh 'git config --global user.email "jenkins@example.com"'
                         sh 'git config --global user.name "Jenkins"'
-                        
-                        // Encodes "@" to "%40" and other special characters safely
-                        def encodedPassword = URLEncoder.encode(PASS, "UTF-8")
-
-                        sh "git remote set-url origin https://${USER}:${encodedPassword}@github.com/mustafa-saleh/demo-module-8-build-automation-and-ci-cd-with-jenkins.git"
+                        sh "git remote set-url origin https://${GITHUB_TOKEN}@github.com/mustafa-saleh/demo-module-8-build-automation-and-ci-cd-with-jenkins.git"
                         sh 'git add .'
                         sh "git commit -m \"ci: Increment version to ${IMAGE_NAME}\""
                         sh 'git push origin HEAD:main'
