@@ -90,10 +90,10 @@ pipeline {
             steps {
                 script {
                     echo "incrementing the version..."
-                    withCredentials([gitUsernamePassword(credentialsId: 'github-repo', gitToolName: 'Default')]) {
+                    withCredentials([gitUsernamePassword(credentialsId: 'github-pass-token', gitToolName: 'Default')]) {
                         sh 'git config --global user.email "jenkins@example.com"'
                         sh 'git config --global user.name "Jenkins"'
-                        // sh "git remote set-url origin https://${GITHUB_TOKEN}@github.com/mustafa-saleh/demo-module-8-build-automation-and-ci-cd-with-jenkins.git"
+                        
                         sh 'git add .'
                         sh "git commit -m \"ci: Increment version to ${IMAGE_NAME}\""
                         sh 'git push origin HEAD:main'

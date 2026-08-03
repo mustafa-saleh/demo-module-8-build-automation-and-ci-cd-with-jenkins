@@ -35,6 +35,12 @@ Jenkins, Groovy, Docker, GitLab, Git, DigitalOcean, Linux, Java, Maven
 - Install GitHub Plugin in Jenkins
 - Configure GitHub access token and connection to Jenkins in GitHub project settings
 - Configure Jenkins to trigger the CI pipeline, whenever a change is pushed to GitHub
+- Configure CI step: Increment patch version
+- Configure CI step: Build Java application and clean old artifacts
+- Configure CI step: Build Image with dynamic Docker Image Tag
+- Configure CI step: Push Image to private DockerHub repository
+- Configure CI step: Commit version update of Jenkins back to Git repository
+- Configure Jenkins pipeline to not trigger automatically on CI build commit to avoid commit loop
 
 ### Implementation
 
@@ -532,10 +538,228 @@ In github, add a new webhook to the endpoint `JENKINS_URL/multibranch-webhook-tr
 
 Now push some changes to the repository to test the integration for multibranch pipeline.
 
-#### 
+#### Dynamically Increment Application Version in Jenkins Pipeline
 
+Let's add a new pipeline stage "increment version" to update the build version each time the pipeline is triggered. the stage will increase the patch number in the build.
 
-#### 
+```groovy
+library identifier: 'my-shared-library@main', retriever: modernSCM([
+    $class: 'GitSCMSource',
+    remote: 'https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git',
+    credentialsId: 'github-repo'
+])
 
+def gv
 
-#### 
+pipeline {
+    agent any
+
+    tools {
+        maven 'maven-3.9.16'
+    }
+
+    stages {
+        stage('init') {
+            steps {
+                script {
+                    gv = load 'script.groovy'
+                }
+            }
+        }
+        
+        stage('increment version') {
+            steps {
+                script {
+                    echo "incrementing the version..."
+                    // increment patch number
+                    sh 'mvn build-helper:parse-version versions:set \
+                    -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.minorVersion}.\\\${parsedVersion.nextIncrementalVersion} \
+                    versions:commit'
+                    // parse the updated file to get the new version and save it as IMAGE_NAME for following stages
+                    def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                    def version = matcher[0][1]
+                    echo "new version is: ${version}"
+                    env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                }
+            }
+        }
+
+        stage('build jar') {
+            steps {
+                script {
+                    // gv.buildJar()
+                    buildJar()
+                }
+            }
+        }
+
+        stage('build image') {
+            when {
+                expression {
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    // gv.buildImage()
+                    buildImage "mustafa199b/demo:jma-${IMAGE_NAME}"
+                    dockerLogin()
+                    dockerPush "mustafa199b/demo:jma-${IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('deploy') {
+            when {
+                expression {
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    gv.deployApp()
+                }
+            }
+        }
+    }
+}
+```
+
+Remove any hardcoded versions in the docker file, and use regular expressions to get the latest build
+
+```dockerfile
+FROM amazoncorretto:17-alpine-jdk
+
+EXPOSE 8080
+
+COPY ./target/java-maven-app-*.jar /usr/app/
+WORKDIR /usr/app
+
+# ENTRYPOINT ["java", "-jar", "java-maven-app-1.0-SNAPSHOT.jar"]
+
+CMD java -jar java-maven-app-*.jar
+```
+
+While building the jar file in "buildJar", let's do a cleanup to ensure the target directory will always contain the single latest build artifact. 
+
+```groovy
+#!/user/bin/env groovy
+
+def call() {
+    echo 'building the application...'
+    sh 'mvn clean package'      // clean
+}
+```
+
+The version increment happens on Jenkins server, each time the pipeline checkout the repository, the initial version is returned & the increment will always return the same version. We can add a new pipeline stage "commit version update" to commit the version update back to the code repository.
+
+```groovy
+library identifier: 'my-shared-library@main', retriever: modernSCM([
+    $class: 'GitSCMSource',
+    remote: 'https://github.com/mustafa-saleh/demo-module-8-jenkins-shared-library.git',
+    credentialsId: 'github-repo'
+])
+
+def gv
+
+pipeline {
+    agent any
+
+    tools {
+        maven 'maven-3.9.16'
+    }
+
+    stages {
+        stage('init') {
+            steps {
+                script {
+                    gv = load 'script.groovy'
+                }
+            }
+        }
+        
+        stage('increment version') {
+            steps {
+                script {
+                    echo "incrementing the version..."
+                    // increment patch number
+                    sh 'mvn build-helper:parse-version versions:set \
+                    -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.minorVersion}.\\\${parsedVersion.nextIncrementalVersion} \
+                    versions:commit'
+                    // parse the updated file to get the new version and save it as IMAGE_NAME for following stages
+                    def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                    def version = matcher[0][1]
+                    echo "new version is: ${version}"
+                    env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                }
+            }
+        }
+
+        stage('build jar') {
+            steps {
+                script {
+                    // gv.buildJar()
+                    buildJar()
+                }
+            }
+        }
+
+        stage('build image') {
+            when {
+                expression {
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    // gv.buildImage()
+                    buildImage "mustafa199b/demo:jma-${IMAGE_NAME}"
+                    dockerLogin()
+                    dockerPush "mustafa199b/demo:jma-${IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('deploy') {
+            when {
+                expression {
+                    BRANCH_NAME == 'main'
+                }
+            }
+
+            steps {
+                script {
+                    gv.deployApp()
+                }
+            }
+        }
+
+        stage('commit version update') {
+            steps {
+                script {
+                    echo "incrementing the version..."
+                    withCredentials([gitUsernamePassword(credentialsId: 'github-pass-token', gitToolName: 'Default')]) {
+                        sh 'git config --global user.email "jenkins@example.com"'
+                        sh 'git config --global user.name "Jenkins"'
+                        
+                        sh 'git add .'
+                        sh "git commit -m \"ci: Increment version to ${IMAGE_NAME}\""
+                        sh 'git push origin HEAD:main'
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+If the repository is configured to automatically trigger the pipeline by sending a webhook each time an a change is pushed to the master branch, this could trigger an infinite loop where the jenkins version update commit could get the pipeline triggered again. To prevent this, we need to update the pipeline build strategy to ignore the changes pushed from the pipeline to the repository.
+
+Install the "Ignore Committer Strategy" plugin and modify the pipeline configuration. Under "Branch Sources" -> "Build Strategy" add a new "Ignore Committer Strategy" & add the email id of jenkins for the commits to be ignored (jenkins@example.com).
+
+Now push the latest changes and observer the new pipeline stages & the version update commit from jenkins
+
+![New Stage Version Update](./images/version_update.png)
